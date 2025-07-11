@@ -1,24 +1,231 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+# -*- coding: utf-8 -*-
+
+import asyncio
+import os
+import sqlite3
+import random
+from pathlib import Path
+
+from astrbot.api import logger, AstrBotConfig
+from astrbot.api.event import (
+    filter,
+    AstrMessageEvent,
+)
 from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
 
-@register("helloworld", "YourName", "一个简单的 Hello World 插件", "1.0.0")
-class MyPlugin(Star):
-    def __init__(self, context: Context):
+# 插件元数据
+PLUGIN_METADATA = {
+    "name": "仿言分身 (Echo Avatar)",
+    "author": "LumineStory",
+    "description": "学习指定用户的说话方式并生成专业的Prompt，仅限全局管理员使用。",
+    "version": "0.1.0",
+    "repo": "https://github.com/oyxning/astrtbot_plugin_echo_avatar",
+}
+
+# 数据库文件路径
+DB_DIR = Path("data/astrtbot_plugin_echo_avatar")
+DB_PATH = DB_DIR / "chat_history.db"
+
+def init_database():
+    """初始化数据库和表"""
+    try:
+        DB_DIR.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                message TEXT NOT NULL,
+                timestamp INTEGER NOT NULL
+            )
+            """
+        )
+        conn.commit()
+        conn.close()
+        logger.info(f"[{PLUGIN_METADATA['name']}] 数据库初始化成功，路径: {DB_PATH}")
+    except Exception as e:
+        logger.error(f"[{PLUGIN_METADATA['name']}] 数据库初始化失败: {e}")
+
+
+@register(
+    PLUGIN_METADATA["name"],
+    PLUGIN_METADATA["author"],
+    PLUGIN_METADATA["description"],
+    PLUGIN_METADATA["version"],
+    PLUGIN_METADATA["repo"],
+)
+class EchoAvatarPlugin(Star):
+    """
+    仿言分身插件主类
+    """
+
+    def __init__(self, context: Context, config: AstrBotConfig):
+        """插件初始化"""
         super().__init__(context)
+        self.config = config
+        self.target_users = self.config.get("target_users", [])
+        
+        # 在异步环境中安全地初始化数据库
+        asyncio.get_event_loop().call_soon_threadsafe(init_database)
 
-    async def initialize(self):
-        """可选择实现异步的插件初始化方法，当实例化该插件类之后会自动调用该方法。"""
-    
-    # 注册指令的装饰器。指令名为 helloworld。注册成功后，发送 `/helloworld` 就会触发这个指令，并回复 `你好, {user_name}!`
-    @filter.command("helloworld")
-    async def helloworld(self, event: AstrMessageEvent):
-        """这是一个 hello world 指令""" # 这是 handler 的描述，将会被解析方便用户了解插件内容。建议填写。
-        user_name = event.get_sender_name()
-        message_str = event.message_str # 用户发的纯文本消息字符串
-        message_chain = event.get_messages() # 用户所发的消息的消息链 # from astrbot.api.message_components import *
-        logger.info(message_chain)
-        yield event.plain_result(f"Hello, {user_name}, 你发了 {message_str}!") # 发送一条纯文本消息
+        logger.info(f"[{PLUGIN_METADATA['name']}] 插件已加载。")
+        logger.info(f"[{PLUGIN_METADATA['name']}] 当前监控的用户: {self.target_users}")
+
+    @filter.event_message_type(filter.EventMessageType.ALL, priority=100)
+    async def message_recorder(self, event: AstrMessageEvent):
+        """
+        监听并记录目标用户的消息
+        使用高优先级确保在其他插件处理前记录
+        """
+        sender_id = event.get_sender_id()
+        
+        # 检查配置是否已更新
+        self.target_users = self.config.get("target_users", [])
+
+        if sender_id in self.target_users:
+            message_text = event.message_str
+            if message_text:  # 只记录非空文本消息
+                try:
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO chat_history (user_id, message, timestamp) VALUES (?, ?, ?)",
+                        (sender_id, message_text, int(event.message_obj.timestamp)),
+                    )
+                    conn.commit()
+                    conn.close()
+                except Exception as e:
+                    logger.error(f"[{PLUGIN_METADATA['name']}] 记录消息到数据库失败: {e}")
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command_group("echo_avatar", alias={"仿言分身"})
+    async def echo_avatar_group(self, event: AstrMessageEvent):
+        """仿言分身指令组"""
+        pass
+
+    @echo_avatar_group.command("数据条数")
+    async def get_data_count(self, event: AstrMessageEvent):
+        """查询已记录的消息总数"""
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM chat_history")
+            count = cursor.fetchone()[0]
+            conn.close()
+            yield event.plain_result(f"[{PLUGIN_METADATA['name']}]\n当前数据库中已记录 {count} 条消息。")
+        except Exception as e:
+            logger.error(f"[{PLUGIN_METADATA['name']}] 查询数据条数失败: {e}")
+            yield event.plain_result(f"查询失败: {e}")
+
+    @echo_avatar_group.command("测试生成")
+    async def test_generate_prompt(self, event: AstrMessageEvent, user_id: str):
+        """
+        使用少量数据测试生成Prompt
+        Args:
+            user_id (str): 目标用户的ID
+        """
+        if not user_id:
+            yield event.plain_result("指令格式错误，请提供用户ID。例如：/echo_avatar 测试生成 123456")
+            return
+
+        yield event.plain_result(f"正在为用户 {user_id} 生成测试性Prompt，请稍候...")
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT message FROM chat_history WHERE user_id = ?", (user_id,))
+            messages = [row[0] for row in cursor.fetchall()]
+            conn.close()
+
+            if not messages:
+                yield event.plain_result(f"数据库中没有找到用户 {user_id} 的聊天记录。")
+                return
+
+            # 随机选取最多20条记录进行测试
+            sample_messages = random.sample(messages, min(len(messages), 20))
+            
+            prompt_template = (
+                "你是一个语言风格分析专家和创意提示词工程师。\n"
+                f"请分析以下来自用户 '{user_id}' 的聊天记录，总结其独特的语言风格、口头禅、语气和常用句式。\n"
+                "基于你的分析，请创作一个全新的、符合该用户风格的、富有创意的Prompt。\n"
+                "--- 聊天记录样本 ---\n"
+                "{messages}\n"
+                "--- 分析与创作 ---\n"
+                "语言风格分析：\n[在此处填写你的分析]\n\n"
+                "模仿该风格生成的Prompt：\n[在此处填写你创作的Prompt]"
+            )
+            
+            formatted_messages = "\n".join([f"- {msg}" for msg in sample_messages])
+            final_prompt = prompt_template.format(messages=formatted_messages)
+
+            # 调用LLM
+            llm_response = await self.context.get_using_provider().text_chat(prompt=final_prompt)
+            
+            if llm_response and llm_response.completion_text:
+                yield event.plain_result(f"为用户 {user_id} 生成的测试Prompt：\n\n{llm_response.completion_text}")
+            else:
+                yield event.plain_result("调用LLM失败或未返回有效内容。")
+
+        except Exception as e:
+            logger.error(f"[{PLUGIN_METADATA['name']}] 测试生成失败: {e}")
+            yield event.plain_result(f"测试生成失败: {e}")
+
+    @echo_avatar_group.command("生成")
+    async def generate_full_prompt(self, event: AstrMessageEvent, user_id: str):
+        """
+        使用全部数据生成最终的Prompt
+        Args:
+            user_id (str): 目标用户的ID
+        """
+        if not user_id:
+            yield event.plain_result("指令格式错误，请提供用户ID。例如：/echo_avatar 生成 123456")
+            return
+
+        yield event.plain_result(f"正在为用户 {user_id} 生成正式Prompt，数据量较大，可能需要一些时间，请耐心等待...")
+
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            # 限制最多提取最新的1000条记录，防止prompt过长
+            cursor.execute("SELECT message FROM (SELECT message FROM chat_history WHERE user_id = ? ORDER BY timestamp DESC LIMIT 1000) ORDER BY RANDOM()", (user_id,))
+            messages = [row[0] for row in cursor.fetchall()]
+            conn.close()
+
+            if not messages:
+                yield event.plain_result(f"数据库中没有找到用户 {user_id} 的聊天记录。")
+                return
+            
+            prompt_template = (
+                "你是一个顶级的语言风格模仿大师和提示词创作专家。\n"
+                f"你的任务是深度分析以下提供的大量来自用户 '{user_id}' 的真实聊天记录。\n"
+                "请精确地、细致地总结出该用户的核心语言特征，包括但不限于：\n"
+                "1. **口头禅和高频词**: 他/她最常说什么词？\n"
+                "2. **语气和情绪**: 是活泼、严肃、温柔还是讽刺？\n"
+                "3. **句子结构**: 喜欢用长句还是短句？陈述句还是疑问句多？\n"
+                "4. **表情符号/颜文字使用**: 是否频繁使用，以及使用哪些特定表情？\n"
+                "5. **主题偏好**: 从聊天内容看，他/她对什么话题感兴趣？\n\n"
+                "在完成上述分析后，请完全代入该用户的角色，创作一个全新的、高质量的、看起来就像是这个用户本人会说出来的Prompt。这个Prompt应当自然、地道，并能体现其个性。\n"
+                "--- 聊天记录 ---\n"
+                "{messages}\n"
+                "--- 分析与创作 ---\n"
+                "**语言风格深度分析报告:**\n[在此处填写你的详细分析]\n\n"
+                "**以其之口，言其之思 (生成的Prompt):**\n[在此处填写你创作的最终Prompt]"
+            )
+
+            # 将消息列表格式化为字符串
+            formatted_messages = "\n".join([f'"{msg}"' for msg in messages])
+            final_prompt = prompt_template.format(messages=formatted_messages)
+
+            # 使用 event.request_llm 以便更好地集成到AstrBot流程中
+            yield event.request_llm(prompt=final_prompt)
+
+        except Exception as e:
+            logger.error(f"[{PLUGIN_METADATA['name']}] 正式生成失败: {e}")
+            yield event.plain_result(f"生成失败: {e}")
 
     async def terminate(self):
-        """可选择实现异步的插件销毁方法，当插件被卸载/停用时会调用。"""
+        """插件卸载/停用时调用"""
+        logger.info(f"[{PLUGIN_METADATA['name']}] 插件已卸载。")
+
