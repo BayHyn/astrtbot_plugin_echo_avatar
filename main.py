@@ -106,15 +106,16 @@ class EchoAvatarPlugin(Star):
                 except Exception as e:
                     logger.error(f"[{PLUGIN_METADATA['name']}] 记录消息到数据库失败: {e}")
 
-    @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command_group("echo_avatar", alias={"仿言分身"})
     def echo_avatar_group(self):
         """
         仿言分身指令组。
         根据AstrBot文档，指令组函数本身不应包含 event 参数，它只作为子命令的入口。
+        权限控制应施加在子命令上。
         """
         pass
 
+    @filter.permission_type(filter.PermissionType.ADMIN)
     @echo_avatar_group.command("数据条数")
     async def get_data_count(self, event: AstrMessageEvent):
         """查询已记录的消息总数"""
@@ -129,6 +130,7 @@ class EchoAvatarPlugin(Star):
             logger.error(f"[{PLUGIN_METADATA['name']}] 查询数据条数失败: {e}")
             yield event.plain_result(f"查询失败: {e}")
 
+    @filter.permission_type(filter.PermissionType.ADMIN)
     @echo_avatar_group.command("测试生成")
     async def test_generate_prompt(self, event: AstrMessageEvent, user_id: str):
         """
@@ -182,6 +184,7 @@ class EchoAvatarPlugin(Star):
             logger.error(f"[{PLUGIN_METADATA['name']}] 测试生成失败: {e}")
             yield event.plain_result(f"测试生成失败: {e}")
 
+    @filter.permission_type(filter.PermissionType.ADMIN)
     @echo_avatar_group.command("生成")
     async def generate_full_prompt(self, event: AstrMessageEvent, user_id: str):
         """
