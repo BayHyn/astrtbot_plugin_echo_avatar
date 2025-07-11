@@ -68,7 +68,14 @@ class EchoAvatarPlugin(Star):
         self.target_users = self.config.get("target_users", [])
         
         # 在异步环境中安全地初始化数据库
-        asyncio.get_event_loop().call_soon_threadsafe(init_database)
+        # 使用 call_soon_threadsafe 可以在主循环已经运行时从其他线程安全地调度任务
+        try:
+            loop = asyncio.get_running_loop()
+            loop.call_soon_threadsafe(init_database)
+        except RuntimeError:
+            # 如果事件循环没有运行，直接调用
+            init_database()
+
 
         logger.info(f"[{PLUGIN_METADATA['name']}] 插件已加载。")
         logger.info(f"[{PLUGIN_METADATA['name']}] 当前监控的用户: {self.target_users}")
@@ -101,8 +108,11 @@ class EchoAvatarPlugin(Star):
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command_group("echo_avatar", alias={"仿言分身"})
-    async def echo_avatar_group(self, event: AstrMessageEvent):
-        """仿言分身指令组"""
+    def echo_avatar_group(self, event: AstrMessageEvent):
+        """
+        仿言分身指令组。
+        根据AstrBot文档，指令组函数本身不应是异步的，它只作为子命令的入口。
+        """
         pass
 
     @echo_avatar_group.command("数据条数")
