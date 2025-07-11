@@ -18,7 +18,7 @@ PLUGIN_METADATA = {
     "name": "仿言分身 (Echo Avatar)",
     "author": "LumineStory",
     "description": "学习指定用户的说话方式并生成专业的Prompt，仅限全局管理员使用。",
-    "version": "0.2.0", # 版本号提升
+    "version": "0.1.0", # 
     "repo": "https://github.com/oyxning/astrtbot_plugin_echo_avatar",
 }
 
