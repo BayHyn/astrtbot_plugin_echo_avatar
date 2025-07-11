@@ -108,10 +108,10 @@ class EchoAvatarPlugin(Star):
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command_group("echo_avatar", alias={"仿言分身"})
-    def echo_avatar_group(self, event: AstrMessageEvent):
+    def echo_avatar_group(self):
         """
         仿言分身指令组。
-        根据AstrBot文档，指令组函数本身不应是异步的，它只作为子命令的入口。
+        根据AstrBot文档，指令组函数本身不应包含 event 参数，它只作为子命令的入口。
         """
         pass
 
@@ -238,4 +238,3 @@ class EchoAvatarPlugin(Star):
     async def terminate(self):
         """插件卸载/停用时调用"""
         logger.info(f"[{PLUGIN_METADATA['name']}] 插件已卸载。")
-
