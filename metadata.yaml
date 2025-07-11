@@ -1,5 +1,14 @@
+# 插件的唯一识别名，建议使用全小写字母和下划线
 name: echo_avatar
+
+# 插件的简短描述，必须与 plugin.json 中的 desc 字段完全一致
 desc: 学习指定用户的说话方式并生成专业的Prompt，仅限全局管理员使用。
+
+# 插件版本号
 version: v0.1.0
+
+# 插件作者
 author: LumineStory
+
+# 插件的Git仓库地址
 repo: https://github.com/oyxning/astrtbot_plugin_echo_avatar
