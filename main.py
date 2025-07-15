@@ -18,7 +18,7 @@ PLUGIN_METADATA = {
     "name": "仿言分身 (Echo Avatar)",
     "author": "LumineStory",
     "description": "学习指定用户的说话方式并生成专业的Prompt，仅限全局管理员使用。",
-    "version": "0.1.0", # 
+    "version": "0.2.0", 
     "repo": "https://github.com/oyxning/astrtbot_plugin_echo_avatar",
 }
 
@@ -200,15 +200,14 @@ class EchoAvatarPlugin(Star):
             prompt_template = (
                 "你是一个语言风格分析专家和创意提示词工程师。\n"
                 f"请分析以下来自用户 '{user_id}' 的聊天记录，总结其独特的语言风格、口头禅、语气和常用句式。\n"
-                "基于你的分析，请创作一个全新的、符合该用户风格的、富有创意的Prompt。\n"
+                "基于你的分析，请模仿该用户风格，创作一个全新的Prompt。\n"
+                "请严格按照以下格式输出，并补充每一项内容：\n"
+                "## Profile\n- author: {user_id}\n- version: 1.0\n- language: Chinese\n- description: （简要描述该用户风格）\n\n## Skills\n（补充该用户的表达技能、特点）\n\n## Rules\n（补充该用户的表达规则、习惯）\n\n## Workflows\n（补充该用户常用的表达流程或沟通方式）\n\n## Init\n（补充初始化内容或开场白）\n"
                 "--- 聊天记录样本 ---\n"
                 "{messages}\n"
-                "--- 分析与创作 ---\n"
-                "语言风格分析：\n[在此处填写你的分析]\n\n"
-                "模仿该风格生成的Prompt：\n[在此处填写你创作的Prompt]"
             )
             formatted_messages = "\n".join([f"- {msg}" for msg in sample_messages])
-            final_prompt = prompt_template.format(messages=formatted_messages)
+            final_prompt = prompt_template.format(messages=formatted_messages, user_id=user_id)
 
             llm_response = await self.context.get_using_provider().text_chat(prompt=final_prompt)
             if llm_response and llm_response.completion_text:
@@ -247,21 +246,15 @@ class EchoAvatarPlugin(Star):
             prompt_template = (
                 "你是一个顶级的语言风格模仿大师和提示词创作专家。\n"
                 f"你的任务是深度分析以下提供的大量来自用户 '{user_id}' 的真实聊天记录。\n"
-                "请精确地、细致地总结出该用户的核心语言特征，包括但不限于：\n"
-                "1. **口头禅和高频词**: 他/她最常说什么词？\n"
-                "2. **语气和情绪**: 是活泼、严肃、温柔还是讽刺？\n"
-                "3. **句子结构**: 喜欢用长句还是短句？陈述句还是疑问句多？\n"
-                "4. **表情符号/颜文字使用**: 是否频繁使用，以及使用哪些特定表情？\n"
-                "5. **主题偏好**: 从聊天内容看，他/她对什么话题感兴趣？\n\n"
-                "在完成上述分析后，请完全代入该用户的角色，创作一个全新的、高质量的、看起来就像是这个用户本人会说出来的Prompt。这个Prompt应当自然、地道，并能体现其个性。\n"
+                "请精确地、细致地总结出该用户的核心语言特征，包括但不限于：口头禅、语气、句式、表情符号、主题偏好等。\n"
+                "在完成上述分析后，请完全代入该用户的角色，创作一个高质量的Prompt。\n"
+                "请严格按照以下格式输出，并补充每一项内容：\n"
+                "## Profile\n- author: {user_id}\n- version: 1.0\n- language: Chinese\n- description: （简要描述该用户风格）\n\n## Skills\n（补充该用户的表达技能、特点）\n\n## Rules\n（补充该用户的表达规则、习惯）\n\n## Workflows\n（补充该用户常用的表达流程或沟通方式）\n\n## Init\n（补充初始化内容或开场白）\n"
                 "--- 聊天记录 ---\n"
                 "{messages}\n"
-                "--- 分析与创作 ---\n"
-                "**语言风格深度分析报告:**\n[在此处填写你的详细分析]\n\n"
-                "**以其之口，言其之思 (生成的Prompt):**\n[在此处填写你创作的最终Prompt]"
             )
             formatted_messages = "\n".join([f'"{msg}"' for msg in messages])
-            final_prompt = prompt_template.format(messages=formatted_messages)
+            final_prompt = prompt_template.format(messages=formatted_messages, user_id=user_id)
             yield event.request_llm(prompt=final_prompt)
         except Exception as e:
             logger.error(f"[{PLUGIN_METADATA['name']}] 正式生成失败: {e}")
