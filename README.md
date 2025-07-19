@@ -102,4 +102,10 @@ V1.0.0版本实现了一个核心的转变：从单纯的**语言风格模仿**�
 
 ## **🔗 仓库地址**
 
-[github.com/oyxning/astrtbot\_plugin\_echo\_avatar](https://github.com/oyxning/astrtbot_plugin_echo_avatar)
+[github.com/oyxning/astrtbot_plugin_echo_avatar](https://github.com/oyxning/astrtbot_plugin_echo_avatar)
+
+## 💡 另：插件反馈群
+
+由于作者持续的那么一个懒，平常不会及时的看issues，所以开了个QQ反馈群方便用户及时的拷打作者。
+* 群号：928985352       
+* 进群密码：神人desuwa
