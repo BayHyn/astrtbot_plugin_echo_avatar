@@ -19,7 +19,7 @@ PLUGIN_METADATA = {
     "name": "仿言分身 (Echo Avatar)",
     "author": "LumineStory",
     "description": "学习、构建并模仿指定用户的数字人格，生成专业的Prompt。",
-    "version": "1.0.0",
+    "version": "1.0.0", # 版本号提升，标识修复
     "repo": "https://github.com/oyxning/astrtbot_plugin_echo_avatar",
 }
 
@@ -110,7 +110,11 @@ PREVIEW_HTML_TEMPLATE = """
 
 # --- 数据库辅助函数 ---
 def init_user_db(db_path: Path):
-    """初始化用户的数据库，创建所有需要的表"""
+    """
+    初始化或迁移用户的数据库。
+    使用 "CREATE TABLE IF NOT EXISTS" 来安全地创建缺失的表，而不会影响现有数据。
+    这是实现向后兼容的关键。
+    """
     try:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(db_path)
@@ -153,7 +157,7 @@ def init_user_db(db_path: Path):
         conn.commit()
         conn.close()
     except Exception as e:
-        logger.error(f"[{PLUGIN_METADATA['name']}] 初始化数据库 {db_path} 失败: {e}")
+        logger.error(f"[{PLUGIN_METADATA['name']}] 初始化/迁移数据库 {db_path} 失败: {e}")
 
 def get_user_db_path(user_id: str) -> Path:
     """获取指定用户的数据库文件路径"""
@@ -185,8 +189,8 @@ class EchoAvatarPlugin(Star):
             if not message_text: return
 
             db_path = get_user_db_path(sender_id)
-            if not db_path.exists():
-                init_user_db(db_path)
+            # **修复**: 无条件调用init_user_db，确保旧数据库也能被动添加新表
+            init_user_db(db_path)
 
             try:
                 conn = sqlite3.connect(db_path)
@@ -262,6 +266,9 @@ class EchoAvatarPlugin(Star):
             yield event.plain_result(f"未找到用户 {user_id} 的数据记录。")
             return
 
+        # **修复**: 确保在读取前，数据库结构是最新的
+        init_user_db(db_path)
+
         try:
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
@@ -328,6 +335,9 @@ class EchoAvatarPlugin(Star):
         if not db_path.exists():
             yield event.plain_result(f"数据库中没有找到用户 {user_id} 的任何记录。")
             return
+
+        # **修复**: 确保在读取前，数据库结构是最新的
+        init_user_db(db_path)
 
         yield event.plain_result(f"正在为用户 {user_id} 生成多维度人格Prompt，请稍候...")
         try:
