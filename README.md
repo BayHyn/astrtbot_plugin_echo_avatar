@@ -1,4 +1,4 @@
-# **仿言分身 (Echo Avatar) v1.0.0**
+# **仿言分身 (Echo Avatar) v1.0.1**
 
 **仿言分身 (Echo Avatar)** 是一个为 [AstrBot](https://github.com/AstrBotDevs/AstrBot) 设计的、强大的数字人格构建与模仿插件。它不再仅仅是模仿，而是通过一个多维度的数据模型，让您可以为指定用户构建一个立体、丰满的“数字人格”，并让 LLM 基于此进行高质量的风格化创作。
 

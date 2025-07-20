@@ -19,7 +19,7 @@ PLUGIN_METADATA = {
     "name": "仿言分身 (Echo Avatar)",
     "author": "LumineStory",
     "description": "学习、构建并模仿指定用户的数字人格，生成专业的Prompt。",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "repo": "https://github.com/oyxning/astrtbot_plugin_echo_avatar",
 }
 
