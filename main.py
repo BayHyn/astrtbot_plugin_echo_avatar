@@ -224,8 +224,7 @@ class EchoAvatarPlugin(Star):
     async def update_profile(self, event: AstrMessageEvent, user_id: str, key: str, *, value: str):
         """完善指定ID的资料。用法: /echo_avatar 完善资料 <ID> 昵称 <昵称内容>"""
         if key.lower() != '昵称':
-            yield event.plain_result("目前只支持完善"昵称"字段。")
-            return
+            yield event.plain_result
         
         db_path = get_user_db_path(user_id)
         init_user_db(db_path)
@@ -357,7 +356,8 @@ class EchoAvatarPlugin(Star):
             # 1. 获取资料
             cursor.execute("SELECT value FROM profile WHERE key = 'nickname'")
             nickname_row = cursor.fetchone()
-            profile_desc = f"用户的昵称是"{nickname_row['value']}"。" if nickname_row else "用户未设置昵称。"
+            profile_desc = f"用户的昵称是\"{nickname_row['value']}\"" if nickname_row else "用户未设置昵称。"
+
 
             # 2. 获取管理员批注
             cursor.execute("SELECT text FROM admin_annotations ORDER BY timestamp")
@@ -375,7 +375,7 @@ class EchoAvatarPlugin(Star):
 
             prompt_template = (
                 "你是一个专业的AI人格档案工程师。你的任务是基于提供的多维度资料，为一个名为 '{user_id}' 的用户生成一个结构化的YAML格式的人格设定档案。\n"
-                "请严格按照以下格式输出，并根据提供的资料填充【】中的内容，如果某项没有足够信息支撑，请填写"暂无"或基于已有信息进行合理推断。\n\n"
+                "请严格按照以下格式输出，并根据提供的资料填充【】中的内容，如果某项没有足够信息支撑，请填写\"暂无\"或基于已有信息进行合理推断。\n\n"
                 "```yaml\n"
                 "## Profile\n"
                 "- author: {author}\n"
@@ -385,9 +385,9 @@ class EchoAvatarPlugin(Star):
                 "## Skills\n"
                 "【在这里分析用户的聊天记录和第三方记忆，总结出该用户的技能或特长。例如：擅长使用颜文字、会画画、了解特定游戏等。请使用- 列表格式。】\n\n"
                 "## Rules\n"
-                "【在这里分析管理员批注和聊天记录，总结出该用户在对话中会遵守的规则。例如：从不使用句号、喜欢在句末加"~"、会主动规避某些话题等。请使用- 列表格式。】\n\n"
+                "【在这里分析管理员批注和聊天记录，总结出该用户在对话中会遵守的规则。例如：从不使用句号、喜欢在句末加\"~\"、会主动规避某些话题等。请使用- 列表格式。】\n\n"
                 "## Workflows\n"
-                "【在这里描述该用户典型的行为模式或对话流程。例如：当被问到不知道的问题时，会用"大概？"或卖萌的方式糊弄过去。当看到有趣图片时，会回复"kusa"。请使用- 列表格式。】\n\n"
+                "【在这里描述该用户典型的行为模式或对话流程。例如：当被问到不知道的问题时，会用\"大概?\"或卖萌的方式糊弄过去。当看到有趣图片时，会回复\"kusa\"。请使用- 列表格式。】\n\n"
                 "## Init\n"
                 "【在这里综合所有信息，生成一段符合该用户口吻的开场白或自我介绍，作为该人格的初始化语句。】\n"
                 "```\n\n"
