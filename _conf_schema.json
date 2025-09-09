@@ -4,5 +4,11 @@
         "description": "需要监控的用户ID列表",
         "hint": "请输入需要学习其语言风格的用户ID（如QQ号），使用列表格式，例如：[\"123456\", \"876543\"]",
         "default": []
+    },
+    "filter_commands": {
+        "type": "bool",
+        "description": "是否过滤指令消息",
+        "hint": "启用后将自动过滤以/开头的指令消息和其他常见机器人指令，避免影响人格模仿效果",
+        "default": true
     }
 }

@@ -19,7 +19,7 @@ PLUGIN_METADATA = {
     "name": "仿言分身 (Echo Avatar)",
     "author": "LumineStory",
     "description": "学习、构建并模仿指定用户的数字人格，生成专业的Prompt。",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "repo": "https://github.com/oyxning/astrtbot_plugin_echo_avatar",
 }
 
@@ -185,10 +185,32 @@ class EchoAvatarPlugin(Star):
     async def message_recorder(self, event: AstrMessageEvent):
         sender_id = event.get_sender_id()
         self.target_users = self.config.get("target_users", [])
+        filter_commands = self.config.get("filter_commands", True)
 
         if sender_id in self.target_users:
-            message_text = event.message_str
-            if not message_text: return
+            message_text = event.message_str.strip()
+            if not message_text: 
+                return
+                
+            if filter_commands:
+                if message_text.startswith('/'):
+                    return
+                    
+                if message_text.lower().startswith('echo_avatar'):
+                    return
+                    
+                command_prefixes = ['!', '#', '.', '~', '?', '！', '。', '？']
+                if any(message_text.startswith(prefix) for prefix in command_prefixes):
+                    return
+                    
+                command_keywords = [
+                    'help', 'start', 'stop', 'status', 'info', 'config', 
+                    '设置', '配置', '状态', '帮助', '开始', '停止'
+                ]
+                if len(message_text) <= 50:
+                    first_word = message_text.split()[0].lower() if message_text.split() else ''
+                    if any(keyword in first_word for keyword in command_keywords):
+                        return
 
             db_path = get_user_db_path(sender_id)
             init_user_db(db_path)
@@ -202,6 +224,12 @@ class EchoAvatarPlugin(Star):
                 )
                 conn.commit()
                 conn.close()
+                
+                if filter_commands:
+                    logger.debug(f"[{PLUGIN_METADATA['name']}] 已记录用户 {sender_id} 的自然语言消息: {message_text[:50]}...")
+                else:
+                    logger.debug(f"[{PLUGIN_METADATA['name']}] 已记录用户 {sender_id} 的所有消息: {message_text[:50]}...")
+                
             except Exception as e:
                 logger.error(f"[{PLUGIN_METADATA['name']}] 记录消息到 {db_path} 失败: {e}")
 

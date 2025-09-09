@@ -5,7 +5,7 @@ name: echo_avatar
 desc: 学习、构建并模仿指定用户的数字人格，生成专业的Prompt。
 
 # 插件版本号
-version: v1.0.1
+version: v1.0.2
 
 # 插件作者
 author: LumineStory
